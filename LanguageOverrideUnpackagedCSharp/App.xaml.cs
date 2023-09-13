@@ -15,6 +15,7 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Microsoft.Windows.ApplicationModel.Resources;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -33,6 +34,11 @@ namespace LanguageOverrideUnpackagedCSharp
         public App()
         {
             this.InitializeComponent();
+            ResourceManagerRequested += (_, e) =>
+            {
+                IResourceManager resourceManager = new LanguageOverrideResourceManager("resources.pri", "pt-PT");
+                e.CustomResourceManager = resourceManager;
+            };
         }
 
         /// <summary>
@@ -46,5 +52,39 @@ namespace LanguageOverrideUnpackagedCSharp
         }
 
         private Window m_window;
+    }
+
+    internal sealed class LanguageOverrideResourceManager : Microsoft.Windows.ApplicationModel.Resources.IResourceManager
+    {
+        private IResourceManager _internalResourceManager;
+        private string _language;
+
+        public LanguageOverrideResourceManager(string filename, string language)
+        {
+            _internalResourceManager = new ResourceManager(filename);
+            _language = language;
+        }
+
+        ResourceMap IResourceManager.MainResourceMap => _internalResourceManager.MainResourceMap;
+
+        event TypedEventHandler<ResourceManager, ResourceNotFoundEventArgs> IResourceManager.ResourceNotFound
+        {
+            add
+            {
+                _internalResourceManager.ResourceNotFound += value;
+            }
+
+            remove
+            {
+                _internalResourceManager.ResourceNotFound -= value;
+            }
+        }
+
+        ResourceContext IResourceManager.CreateResourceContext()
+        {
+            var overrideResourceContext = _internalResourceManager.CreateResourceContext();
+            overrideResourceContext.QualifierValues["Language"] = _language;
+            return overrideResourceContext;
+        }
     }
 }
